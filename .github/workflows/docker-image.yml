@@ -32,4 +32,6 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: ceararojas/sys-testing:${{ env.GIT_COMMIT_HASH }}
+          tags: |
+            ceararojas/sys-test:${{ env.GIT_COMMIT_HASH }}
+            ceararojas/sys-test:main
