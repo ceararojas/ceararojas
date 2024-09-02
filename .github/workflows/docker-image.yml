@@ -25,9 +25,3 @@ jobs:
         id: vars
         run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-7)-beta" >> $GITHUB_ENV
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: ceararojas/sys-testing:${{ env.GIT_COMMIT_HASH }}
