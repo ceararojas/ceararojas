@@ -1,7 +1,7 @@
-name: Docker Build and Push
+name: Build and Push Docker Image
 
 on:
-  workflow_dispatch: # Allows manual triggering from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,12 +11,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Define repo name
-        run: echo "REPO_NAME=ceararojas/" >> $GITHUB_ENV
+        run: echo "REPO_NAME=ecostor" >> $GITHUB_ENV
 
       - name: Define component details
         run: |
           # Define a list of components and their respective directories
-          echo "COMPONENTS=sysrepo >> $GITHUB_ENV
+          echo "COMPONENTS=rest_api,mbms >> $GITHUB_ENV
           echo "PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_ENV
 
       - name: Extract Git commit hash
