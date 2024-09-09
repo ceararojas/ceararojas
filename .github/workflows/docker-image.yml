@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
 
       - name: Define repo name
         run: echo "REPO_NAME=ceararojas/sys-testing" >> $GITHUB_ENV
@@ -26,15 +28,48 @@ jobs:
       - name: Extract Git commit hash
         run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
-      - name: Initialize or Read current version
-        id: read-version
+      - name: Get current version from tags
+        id: get-version
         run: |
-          if [ -f VERSION ]; then
-            VERSION=$(cat VERSION)
+          TAG=$(git tag --list "v*" | sort -V | tail -n 1)
+          if [ -z "$TAG" ]; then
+            CURRENT_VERSION="0.0.0"
           else
-            VERSION="0.0.0"
+            CURRENT_VERSION=$(echo $TAG | sed 's/^v//')
           fi
-          echo "CURRENT_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_ENV
+
+      - name: Increment version
+        id: increment-version
+        run: |
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          CURRENT_VERSION="${{ env.CURRENT_VERSION }}"
+
+          MAJOR=$(echo $CURRENT_VERSION | cut -d '.' -f 1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d '.' -f 2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d '.' -f 3)
+
+          if [ "$RELEASE_TYPE" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$RELEASE_TYPE" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$RELEASE_TYPE" = "patch" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="v${NEW_VERSION}"
+
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
+
+      - name: Create new tag
+        run: |
+          git tag ${{ env.NEW_TAG }}
+          git push origin ${{ env.NEW_TAG }}
 
       - name: Docker Login
         uses: docker/login-action@v2
@@ -46,43 +81,16 @@ jobs:
         id: docker-tags
         run: |
           BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
-          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
-          CURRENT_VERSION="${{ env.CURRENT_VERSION }}"
+          CURRENT_VERSION="${{ env.NEW_VERSION }}"
 
           if [ "$BRANCH_NAME" = "main" ]; then
-            # Increment version based on release_type
-            MAJOR=$(echo $CURRENT_VERSION | cut -d '.' -f 1)
-            MINOR=$(echo $CURRENT_VERSION | cut -d '.' -f 2)
-            PATCH=$(echo $CURRENT_VERSION | cut -d '.' -f 3 | cut -d '-' -f 1)  # Remove pre-release part if exists
-
-            if [ "$RELEASE_TYPE" = "major" ]; then
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-            elif [ "$RELEASE_TYPE" = "minor" ]; then
-              MINOR=$((MINOR + 1))
-              PATCH=0
-            elif [ "$RELEASE_TYPE" = "patch" ]; then
-              PATCH=$((PATCH + 1))
-            fi
-
-            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-
-            VERSION_TAG="${NEW_VERSION}"
-            VERSION_COMMIT_TAG="v${NEW_VERSION}.${GIT_COMMIT_HASH}"
+            VERSION_TAG="${CURRENT_VERSION}"
+            VERSION_COMMIT_TAG="v${CURRENT_VERSION}.${GIT_COMMIT_HASH}"
             TAGS="${REPO_NAME}:${VERSION_TAG},${REPO_NAME}:${VERSION_COMMIT_TAG}"
-
-            # Update the VERSION file
-            echo $NEW_VERSION > VERSION
-
           elif [ "$BRANCH_NAME" = "development" ]; then
-            # Development branch uses commit-beta tag
-            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-beta"
-
+            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-dev"
           else
-            # Other branches use just commit hash as tag
-            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}"
-            
+            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-feature"
           fi
           echo "DOCKER_TAGS=${TAGS}" >> $GITHUB_ENV
 
