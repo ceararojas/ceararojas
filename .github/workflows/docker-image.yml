@@ -1,132 +1,52 @@
-name: Build and Push Docker Image
+name: Docker Build and Push
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Type of release (major, minor, patch)'
-        required: false
-        default: 'patch'
-        options:
-          - major
-          - minor
-          - patch
+  push:
+    branches:
+      - main
+      - development
+      - '**/feature/**' # Adjust according to your feature branch naming convention
+  workflow_dispatch: # Allows manual triggering from GitHub UI
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token has necessary permissions
 
       - name: Define repo name
-        run: echo "REPO_NAME=ceararojas/sys-testing" >> $GITHUB_ENV
+        run: echo "REPO_NAME=ceararojas/sysrepo" >> $GITHUB_ENV
 
       - name: Extract Git commit hash
         run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
-      - name: Determine Branch
-        id: branch-check
-        run: |
-          BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
-          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
-          if [ "$BRANCH_NAME" = "main" ]; then
-            echo "IS_MAIN=true" >> $GITHUB_ENV
-          else
-            echo "IS_MAIN=false" >> $GITHUB_ENV
-          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Get current version from tags
-        if: env.IS_MAIN == 'true'
-        id: get-version
-        run: |
-          TAG=$(git tag --list "v*" | sort -V | tail -n 1)
-          if [ -z "$TAG" ]; then
-            CURRENT_VERSION="0.0.0"
-          else
-            CURRENT_VERSION=$(echo $TAG | sed 's/^v//')
-          fi
-          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_ENV
-
-      - name: Increment version
-        if: env.IS_MAIN == 'true'
-        id: increment-version
-        run: |
-          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
-          CURRENT_VERSION="${{ env.CURRENT_VERSION }}"
-
-          MAJOR=$(echo $CURRENT_VERSION | cut -d '.' -f 1)
-          MINOR=$(echo $CURRENT_VERSION | cut -d '.' -f 2)
-          PATCH=$(echo $CURRENT_VERSION | cut -d '.' -f 3)
-
-          if [ "$RELEASE_TYPE" = "major" ]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-          elif [ "$RELEASE_TYPE" = "minor" ]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-          elif [ "$RELEASE_TYPE" = "patch" ]; then
-            PATCH=$((PATCH + 1))
-          fi
-
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          NEW_TAG="v${NEW_VERSION}"
-
-          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-          echo "NEW_TAG=${NEW_TAG}" >> $GITHUB_ENV
-
-      - name: Check if tag exists
-        if: env.IS_MAIN == 'true'
-        id: check-tag
-        run: |
-          if git ls-remote --tags origin "${{ env.NEW_TAG }}" | grep "${{ env.NEW_TAG }}"; then
-            echo "Tag ${NEW_TAG} already exists."
-            echo "TAG_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "Tag ${NEW_TAG} does not exist."
-            echo "TAG_EXISTS=false" >> $GITHUB_ENV
-          fi
-
-      - name: Create new tag
-        if: env.IS_MAIN == 'true' && env.TAG_EXISTS == 'false'
-        run: |
-          git tag ${{ env.NEW_TAG }}
-          git push origin ${{ env.NEW_TAG }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use PAT_TOKEN here
-
-      - name: Docker Login
+      - name: Set up Docker credentials
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set Docker tags for images
-        id: docker-tags
+      - name: Determine image tag
+        id: tag
         run: |
-          BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
-          CURRENT_VERSION="${{ env.NEW_VERSION }}"
-
-          if [ "$BRANCH_NAME" = "main" ]; then
-            VERSION_TAG="${CURRENT_VERSION}"
-            VERSION_COMMIT_TAG="v${CURRENT_VERSION}.${GIT_COMMIT_HASH}"
-            TAGS="${REPO_NAME}:${VERSION_TAG},${REPO_NAME}:${VERSION_COMMIT_TAG}"
-          elif [ "$BRANCH_NAME" = "development" ]; then
-            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-dev"
+          BRANCH=$(echo "${GITHUB_REF##*/}")
+          if [ "$BRANCH" = "main" ]; then
+            TAG="${{ env.GIT_COMMIT_HASH }}-main"
+          elif [ "$BRANCH" = "development" ]; then
+            TAG="${{ env.GIT_COMMIT_HASH }}-dev"
           else
-            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-feature"
+            TAG="commit-feature"
           fi
-          echo "DOCKER_TAGS=${TAGS}" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: ${{ env.DOCKER_TAGS }}
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REPO_NAME }}:${{ env.TAG }} .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REPO_NAME }}:${{ env.TAG }}
