@@ -21,29 +21,33 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Define repo name
-        id: repo-name
         run: echo "REPO_NAME=ceararojas/sys-testing" >> $GITHUB_ENV
 
       - name: Extract Git commit hash
-        id: commit-hash
         run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
-      - name: Read current version
-        id: version
-        run: echo "CURRENT_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+      - name: Initialize or Read current version
+        id: read-version
+        run: |
+          if [ -f VERSION ]; then
+            VERSION=$(cat VERSION)
+          else
+            VERSION="0.0.0"
+          fi
+          echo "CURRENT_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Set Docker tags for images
         id: docker-tags
         run: |
           BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          CURRENT_VERSION="${{ env.CURRENT_VERSION }}"
 
           if [ "$BRANCH_NAME" = "main" ]; then
             # Increment version based on release_type
-            VERSION="${CURRENT_VERSION}"
-            MAJOR=$(echo $VERSION | cut -d '.' -f 1)
-            MINOR=$(echo $VERSION | cut -d '.' -f 2)
-            PATCH=$(echo $VERSION | cut -d '.' -f 3 | cut -d '-' -f 1)  # Remove pre-release part if exists
+            MAJOR=$(echo $CURRENT_VERSION | cut -d '.' -f 1)
+            MINOR=$(echo $CURRENT_VERSION | cut -d '.' -f 2)
+            PATCH=$(echo $CURRENT_VERSION | cut -d '.' -f 3 | cut -d '-' -f 1)  # Remove pre-release part if exists
 
             if [ "$RELEASE_TYPE" = "major" ]; then
               MAJOR=$((MAJOR + 1))
