@@ -11,34 +11,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Define repos name
-        id: vars
+      - name: Define repo name
+        id: repo-name
         run: echo "REPO_NAME=ceararojas/sys-testing" >> $GITHUB_ENV
 
-      - name: Extract Git commit hash, use first 8 codes.
-        id: vars
+      - name: Extract Git commit hash
+        id: commit-hash
         run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
       - name: Read current version
         id: version
         run: echo "CURRENT_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-      - name: Setting up docker tags for images
-        id: tags
+      - name: Set Docker tags for images
+        id: docker-tags
         run: |
           BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
           
           if [ "$BRANCH_NAME" = "main" ]; then
+            # Main branch uses both version-commit and version tags
             VERSION="${CURRENT_VERSION}-${GIT_COMMIT_HASH}"
             TAGS="${REPO_NAME}:${VERSION} ${REPO_NAME}:${CURRENT_VERSION}"
 
           elif [ "$BRANCH_NAME" = "development" ]; then
+            # Development branch uses commit-beta tag
             TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-beta"
 
           else
-            # For other branches, use just commit
+            # Other branches use just commit hash as tag
             TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}"
-          
+            
           fi
           echo "DOCKER_TAGS=${TAGS}" >> $GITHUB_ENV
 
