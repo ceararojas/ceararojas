@@ -2,6 +2,15 @@ name: Build and Push Docker Image
 
 on:
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release (major, minor, patch)'
+        required: true
+        default: 'patch'
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
   build:
@@ -27,11 +36,34 @@ jobs:
         id: docker-tags
         run: |
           BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
-          
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+
           if [ "$BRANCH_NAME" = "main" ]; then
-            # Main branch uses both version-commit and version tags
-            VERSION="${CURRENT_VERSION}-${GIT_COMMIT_HASH}"
-            TAGS="${REPO_NAME}:${VERSION} ${REPO_NAME}:${CURRENT_VERSION}"
+            # Increment version based on release_type
+            VERSION="${CURRENT_VERSION}"
+            MAJOR=$(echo $VERSION | cut -d '.' -f 1)
+            MINOR=$(echo $VERSION | cut -d '.' -f 2)
+            PATCH=$(echo $VERSION | cut -d '.' -f 3 | cut -d '-' -f 1)  # Remove pre-release part if exists
+
+            if [ "$RELEASE_TYPE" = "major" ]; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+            elif [ "$RELEASE_TYPE" = "minor" ]; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+            elif [ "$RELEASE_TYPE" = "patch" ]; then
+              PATCH=$((PATCH + 1))
+            fi
+
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+            VERSION_TAG="${NEW_VERSION}"
+            VERSION_COMMIT_TAG="${NEW_VERSION}-${GIT_COMMIT_HASH}"
+            TAGS="${REPO_NAME}:${VERSION_TAG},${REPO_NAME}:${VERSION_COMMIT_TAG}"
+
+            # Update the VERSION file
+            echo $NEW_VERSION > VERSION
 
           elif [ "$BRANCH_NAME" = "development" ]; then
             # Development branch uses commit-beta tag
