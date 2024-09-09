@@ -1,12 +1,7 @@
 name: Docker Build and Push
 
 on:
-  push:
-    branches:
-      - main
-      - development
-      - '**/feature/**' # Adjust according to your feature branch naming convention
-  workflow_dispatch: # Allows manual triggering from GitHub UI
+  workflow_dispatch: #
 
 jobs:
   build:
@@ -36,8 +31,10 @@ jobs:
           BRANCH=$(echo "${GITHUB_REF##*/}")
           if [ "$BRANCH" = "main" ]; then
             TAG="${{ env.GIT_COMMIT_HASH }}-main"
+
           elif [ "$BRANCH" = "development" ]; then
             TAG="${{ env.GIT_COMMIT_HASH }}-dev"
+          
           else
             TAG="commit-feature"
           fi
