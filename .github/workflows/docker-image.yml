@@ -1,10 +1,7 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Allows manual triggering of the workflow
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,20 +9,38 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract Git commit hash
+      - name: Define repos name
         id: vars
-        run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-7)-beta" >> $GITHUB_ENV
+        run: echo "REPO_NAME=ceararojas/sys-testing" >> $GITHUB_ENV
+
+      - name: Extract Git commit hash, use first 8 codes.
+        id: vars
+        run: echo "GIT_COMMIT_HASH=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
+
+      - name: Read current version
+        id: version
+        run: echo "CURRENT_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+      - name: Setting up docker tags for images
+        id: tags
+        run: |
+          BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
+          
+          if [ "$BRANCH_NAME" = "main" ]; then
+            VERSION="${CURRENT_VERSION}-${GIT_COMMIT_HASH}"
+            TAGS="${REPO_NAME}:${VERSION} ${REPO_NAME}:${CURRENT_VERSION}"
+
+          elif [ "$BRANCH_NAME" = "development" ]; then
+            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}-beta"
+
+          else
+            # For other branches, use just commit
+            TAGS="${REPO_NAME}:${GIT_COMMIT_HASH}"
+          
+          fi
+          echo "DOCKER_TAGS=${TAGS}" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -33,6 +48,4 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: |
-            ceararojas/sys-testing:${{ env.GIT_COMMIT_HASH }}
-            ceararojas/sys-testing:main
+          tags: ${{ env.DOCKER_TAGS }}
