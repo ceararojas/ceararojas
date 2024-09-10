@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: ecostor_docker
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
       - name: Define component details
         run: |
           # Define a list of components and their respective directories
-          echo "COMPONENTS=rest_api,mbms >> $GITHUB_ENV
+          echo "COMPONENTS=rest_api >> $GITHUB_ENV
           echo "PLATFORMS=linux/amd64,linux/arm64" >> $GITHUB_ENV
 
       - name: Extract Git commit hash
@@ -36,15 +36,15 @@ jobs:
         run: |
           BRANCH=$(echo "${GITHUB_REF##*/}")
           if [ "$BRANCH" = "main" ]; then
-            TAG="${{ env.GIT_COMMIT_HASH }}-main"
+            TAG="main.${{ env.GIT_COMMIT_HASH }}"
           elif [ "$BRANCH" = "development" ]; then
-            TAG="${{ env.GIT_COMMIT_HASH }}-dev"
+            TAG="development.${{ env.GIT_COMMIT_HASH }}"
           else
-            TAG="commit-feature"
+            TAG="feature.${{ env.GIT_COMMIT_HASH }}"
           fi
           echo "TAG=$TAG" >> $GITHUB_ENV
 
-      - name: Build and Push Docker images
+      - name: Build and Push Docker Image
         run: |
           # Convert COMPONENTS string to an array
           IFS=',' read -r -a COMPONENTS_ARRAY <<< "${{ env.COMPONENTS }}"
