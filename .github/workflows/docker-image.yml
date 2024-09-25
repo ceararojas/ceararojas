@@ -37,10 +37,13 @@ jobs:
           BRANCH=$(echo "${GITHUB_REF##*/}")
           if [ "$BRANCH" = "main" ]; then
             TAG="main.${{ env.GIT_COMMIT_HASH }}"
+            
           elif [ "$BRANCH" = "development" ]; then
             TAG="development.${{ env.GIT_COMMIT_HASH }}"
+          
           else
             TAG="feature.${{ env.GIT_COMMIT_HASH }}"
+          
           fi
           echo "TAG=$TAG" >> $GITHUB_ENV
 
