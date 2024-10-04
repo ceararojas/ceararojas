@@ -21,13 +21,9 @@ jobs:
       id: vars
       run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-    - name: Get short Git commit hash (set-output)
-      id: get_commit
-      run: echo "::set-output name=COMMIT_HASH::$(git rev-parse --short HEAD)"
-
     - name: Verify COMMIT_HASH (debugging step)
-      run: echo "Commit hash is: ${{ steps.get_commit.outputs.COMMIT_HASH }}"
-
+      run: echo "Commit hash is: $COMMIT_HASH"
+    
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -36,10 +32,10 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker build -t ceararojas/sysrepo:${{ steps.get_commit.outputs.COMMIT_HASH }} .
-        docker push ceararojas/sysrepo:${{ steps.get_commit.outputs.COMMIT_HASH }}
+        docker build -t ceararojas/sysrepo:$COMMIT_HASH .
+        docker push ceararojas/sysrepo:$COMMIT_HASH
       env:
         DOCKER_BUILDKIT: 1
 
     - name: Log pushed Docker image tag
-      run: echo "Docker image pushed with tag: ceararojas/sysrepo:${{ steps.get_commit.outputs.COMMIT_HASH }}"
+      run: echo "Docker image pushed with tag: ceararojas/sysrepo:$COMMIT_HASH"
