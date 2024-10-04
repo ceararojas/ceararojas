@@ -20,7 +20,7 @@ jobs:
     - name: Get short Git commit hash
       id: vars
       run: |
-        echo "COMMIT_HASH=$(git rev-parse --long HEAD)" >> $GITHUB_ENV
+        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
     - name: Display COMMIT_HASH
       run: |
