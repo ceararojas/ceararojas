@@ -21,9 +21,6 @@ jobs:
       id: vars
       run: echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-    # - name: Verify COMMIT_HASH (debugging step)
-    #   run: echo "Commit hash is: $COMMIT_HASH"
-    
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -37,6 +34,3 @@ jobs:
         docker push ceararojas/sysrepo:$COMMIT_HASH
       env:
         DOCKER_BUILDKIT: 1
-
-    - name: Log pushed Docker image tag
-      run: echo "Docker image pushed with tag: ceararojas/sysrepo:$COMMIT_HASH"
