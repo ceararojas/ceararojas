@@ -21,6 +21,9 @@ jobs:
       id: vars
       run: |
         echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+    - name: Display COMMIT_HASH
+      run: |
         echo "Git hash: $COMMIT_HASH"
 
     - name: Log in to Docker Hub
