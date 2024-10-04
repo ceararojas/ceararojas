@@ -33,3 +33,6 @@ jobs:
         docker push ceararojas/sysrepo:${{ env.COMMIT_HASH }}
       env:
         DOCKER_BUILDKIT: 1
+
+    - name: Log pushed Docker image tag
+      run: echo "Docker image pushed with tag: ceararojas/sysrepo:${{ env.COMMIT_HASH }}"
