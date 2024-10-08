@@ -1,3 +1,16 @@
+## Structure:
+  # events
+  # # Jobs
+  # # # Runner machine
+  # # # # steps
+
+  # Goal for this task:
+    # Events: On push in main, manual trigger
+    # Get the branch name
+    # Get the git hash
+    # Append the tag name = git_hash + branch_name
+    # Build and push docker images to dockerhub
+
 name: Build Docker Image  # Workflow name
 
 # Trigger events
@@ -57,6 +70,3 @@ jobs:
           
           docker build -t ceararojas/sysrepo:$TAG_NAME .  # Build image with the new tag format
           docker push ceararojas/sysrepo:$TAG_NAME  # Push image with the new tag format
-        env:
-          DOCKER_BUILDKIT: 1  # Enable BuildKit for Docker
-
