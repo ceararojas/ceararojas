@@ -1,43 +1,62 @@
-name: Build Docker Image
+name: Build Docker Image  # Workflow name
 
-on:
-  push:
+# Trigger events
+on:   # specifies events that trigger the workflow
+  push:  # Runs on push events
     branches:
-      - main    
-  workflow_dispatch:
+      - main  # Only on 'main' branch
+  workflow_dispatch:  # Manual trigger from GitHub UI
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build:  # Job name
+    runs-on: ubuntu-latest  # Runner machine, Ubuntu VM
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.inputs.target_branch }} 
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+       # # Step 1: Checkout code
+      - name: Checkout code 
+        uses: actions/checkout@v2  # Use the GitHub Actions 'checkout' action, version 2
 
-    - name: Get short Git commit hash
-      id: vars
-      run: |
-        echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      # # Step 2: Setup Buildx
+      - name: Set up Docker Buildx 
+        uses: docker/setup-buildx-action@v2  # Docker Buildx action
 
-    - name: Display COMMIT_HASH
-      run: |
-        echo "Git hash: $COMMIT_HASH"
+      # # Step 3: Get branch name
+      - name: Get branch name 
+        run: |                 # run in shell command
+          BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')  # Extract branch name
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV  # Save branch name
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # # Step 4: Get commit hash
+      - name: Get short Git commit hash 
+        id: vars    # Step ID for later reference
+        run: |
+          echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV  # Store commit hash in the environment
+          echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"  # Set output variable
+        # Explanation:
+        # echo "::set-output name=<output_name>::<value>"
 
-    - name: Build and push Docker image
-      run: |
-        echo "Building and pushing image with tag: $COMMIT_HASH"
-        docker build -t ceararojas/sysrepo:$COMMIT_HASH .
-        docker push ceararojas/sysrepo:$COMMIT_HASH
-      env:
-        DOCKER_BUILDKIT: 1
+      # # Step 5: Displaying branch name and git hash
+      - name: Display branch and commit hash 
+        run: |
+          echo "Branch: $BRANCH_NAME"  # Show branch name
+          echo "Commit: ${{ steps.vars.outputs.commit_hash }}" 
+  
+      # # Step 6: Login to Docker Hub
+      - name: Log in to Docker Hub 
+        uses: docker/login-action@v2  # Docker login action
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}  # Docker Hub username
+          password: ${{ secrets.DOCKERHUB_TOKEN }}  # Docker Hub token
+
+      # # Step 7: Build and push image
+      - name: Build and push Docker image  
+        run: |
+          TAG_NAME="${{ steps.vars.outputs.commit_hash }}-$BRANCH_NAME"  # Define tag name as git hash - branch name
+          echo "Pushing image: $TAG_NAME"  # Log the tag name
+          
+          docker build -t ceararojas/sysrepo:$TAG_NAME .  # Build image with the new tag format
+          docker push ceararojas/sysrepo:$TAG_NAME  # Push image with the new tag format
+        env:
+          DOCKER_BUILDKIT: 1  # Enable BuildKit for Docker
+
