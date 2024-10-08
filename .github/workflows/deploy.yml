@@ -3,30 +3,22 @@ name: Deployment Workflow
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Select version from available tags'
-        required: true
-        default: '1.0'  # Placeholder; actual options will be available in the logs
       system:
-        description: 'Select system for deployment'
+        description: 'Select test rack for deployment'
         required: true
         default: 'System A'
         type: choice
         options:
-          - System A
-          - System B
-          - System C
+          - Klaus
+          - Kalle
+          - Kari
+          - Klara
       services:
-        description: 'Select services to deploy'
+        description: |
+          Example: "New MBMS,Legacy MBMS,REST API,Device Logger"
         required: true
-        default: 'New MBMS'
-        type: choice
-        options:
-          - New MBMS
-          - Legacy MBMS
-          - REST API
-          - Device Logger
-
+        default: 'New MBMS,REST API,Device Logger'
+        
 jobs:
   fetch-tags:
     runs-on: ubuntu-latest
@@ -40,10 +32,9 @@ jobs:
       - name: Fetch Tags
         id: get-tags
         run: |
-          git fetch --tags
-          tags=$(git tag)
+          tags=$(git tag -l --points-at HEAD)
           echo "::set-output name=tags::$(echo $tags | tr '\n' ',')"
-  
+
   deploy:
     runs-on: ubuntu-latest
     needs: fetch-tags
@@ -52,36 +43,29 @@ jobs:
       - name: Print Available Tags
         run: |
           echo "Available tags: ${{ needs.fetch-tags.outputs.tags }}"
-          echo "Selected Version: ${{ github.event.inputs.version }}"
           echo "Selected System: ${{ github.event.inputs.system }}"
           echo "Selected Services: ${{ github.event.inputs.services }}"
 
-      - name: Validate Version
-        run: |
-          if [[ ! ",${{ needs.fetch-tags.outputs.tags }}," == *",${{ github.event.inputs.version }},"* ]]; then
-            echo "Error: Selected version '${{ github.event.inputs.version }}' is not available."
-            exit 1
-          fi
-
       - name: Deploy Services
         run: |
-          echo "Deploying services..."
-          if [[ "${{ github.event.inputs.services }}" == "New MBMS" ]]; then
-            echo "Deploying New MBMS version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
-            # Add deployment commands for New MBMS here
-          fi
-          if [[ "${{ github.event.inputs.services }}" == "Legacy MBMS" ]]; then
-            echo "Deploying Legacy MBMS version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
-            # Add deployment commands for Legacy MBMS here
-          fi
-          if [[ "${{ github.event.inputs.services }}" == "REST API" ]]; then
-            echo "Deploying REST API version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
-            # Add deployment commands for REST API here
-          fi
-          if [[ "${{ github.event.inputs.services }}" == "Device Logger" ]]; then
-            echo "Deploying Device Logger version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
-            # Add deployment commands for Device Logger here
-          fi
+          IFS=',' read -ra SERVICES <<< "${{ github.event.inputs.services }}"
+          for service in "${SERVICES[@]}"; do
+            echo "Deploying ${service} version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
+            # Add deployment commands for each service here
+            if [[ "$service" == "New MBMS" ]]; then
+              echo "Deploying New MBMS..."
+              # Your deployment commands for New MBMS
+            elif [[ "$service" == "Legacy MBMS" ]]; then
+              echo "Deploying Legacy MBMS..."
+              # Your deployment commands for Legacy MBMS
+            elif [[ "$service" == "REST API" ]]; then
+              echo "Deploying REST API..."
+              # Your deployment commands for REST API
+            elif [[ "$service" == "Device Logger" ]]; then
+              echo "Deploying Device Logger..."
+              # Your deployment commands for Device Logger
+            fi
+          done
 
       - name: Complete Deployment
         run: echo "Deployment completed successfully!"
