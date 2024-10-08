@@ -39,21 +39,6 @@ jobs:
     needs: fetch-tags
 
     steps:
-      - name: Print Available Tags
-        run: |
-          echo "Available tags: ${{ needs.fetch-tags.outputs.tags }}"
-          echo "Selected Version: ${{ github.event.inputs.version }}"
-          echo "Selected System: ${{ github.event.inputs.system }}"
-          echo "Selected Services: ${{ github.event.inputs.services }}"
-
-      - name: Validate Version
-        run: |
-          IFS=',' read -ra TAGS <<< "${{ needs.fetch-tags.outputs.tags }}"
-          if [[ ! " ${TAGS[@]} " =~ " ${GITHUB_REF##*/} " ]]; then
-            echo "Error: Selected version '${{ github.event.inputs.version }}' is not available."
-            exit 1
-          fi
-
       - name: Deploy Services
         run: |
           IFS=',' read -ra SERVICES <<< "${{ github.event.inputs.services }}"
