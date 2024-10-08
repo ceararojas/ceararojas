@@ -9,9 +9,10 @@ on:
         default: 'System A'
         type: choice
         options:
-          - System A
-          - System B
-          - System C
+          - Klaus
+          - Kalle
+          - Kari
+          - Klara
       services:
         description: 'Select services to deploy (comma-separated list, e.g., "New MBMS,Legacy MBMS")'
         required: true
