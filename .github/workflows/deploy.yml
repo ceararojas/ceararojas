@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       system:
-        description: 'Select system for deployment'
+        description: 'Select test rack for deployment'
         required: true
         default: 'System A'
         type: choice
@@ -14,7 +14,14 @@ on:
           - Kari
           - Klara
       services:
-        description: 'Select services to deploy (comma-separated list, e.g., "New MBMS,Legacy MBMS")'
+        description: |
+          Select services to deploy (comma-separated list).
+          Available options:
+          - New MBMS
+          - Legacy MBMS
+          - REST API
+          - Device Logger
+          Example: "New MBMS,Legacy MBMS"
         required: true
         default: 'New MBMS'
         
@@ -39,6 +46,12 @@ jobs:
     needs: fetch-tags
 
     steps:
+      - name: Print Available Tags
+        run: |
+          echo "Available tags: ${{ needs.fetch-tags.outputs.tags }}"
+          echo "Selected System: ${{ github.event.inputs.system }}"
+          echo "Selected Services: ${{ github.event.inputs.services }}"
+
       - name: Deploy Services
         run: |
           IFS=',' read -ra SERVICES <<< "${{ github.event.inputs.services }}"
@@ -46,17 +59,17 @@ jobs:
             echo "Deploying ${service} version ${{ github.event.inputs.version }} to ${{ github.event.inputs.system }}"
             # Add deployment commands for each service here
             if [[ "$service" == "New MBMS" ]]; then
-              # Deployment command for New MBMS
               echo "Deploying New MBMS..."
+              # Your deployment commands for New MBMS
             elif [[ "$service" == "Legacy MBMS" ]]; then
-              # Deployment command for Legacy MBMS
               echo "Deploying Legacy MBMS..."
+              # Your deployment commands for Legacy MBMS
             elif [[ "$service" == "REST API" ]]; then
-              # Deployment command for REST API
               echo "Deploying REST API..."
+              # Your deployment commands for REST API
             elif [[ "$service" == "Device Logger" ]]; then
-              # Deployment command for Device Logger
               echo "Deploying Device Logger..."
+              # Your deployment commands for Device Logger
             fi
           done
 
