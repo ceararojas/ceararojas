@@ -15,15 +15,9 @@ on:
           - Klara
       services:
         description: |
-          Select services to deploy (comma-separated list).
-          Available options:
-          - New MBMS
-          - Legacy MBMS
-          - REST API
-          - Device Logger
-          Example: "New MBMS,Legacy MBMS"
+          Example: "New MBMS,Legacy MBMS,REST API,Device Logger"
         required: true
-        default: 'New MBMS'
+        default: 'New MBMS,REST API,Device Logger'
         
 jobs:
   fetch-tags:
