@@ -19,7 +19,15 @@ jobs:
       - name: Create Release Branch
         run: |
           TAG_NAME=${{ github.event.release.tag_name }}
-          # Format the branch name as Release_<tag>
-          BRANCH_NAME="Release_${TAG_NAME//\//-}" # Replace slashes with hyphens
-          git checkout -b "$BRANCH_NAME"
-          git push origin "$BRANCH_NAME"
+          # Extract major version from the tag
+          MAJOR_VERSION=$(echo "$TAG_NAME" | cut -d '.' -f 1)
+          
+          # Check if the release is a major release (e.g., v1.0.0 -> v1)
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              # Format the branch name as Release_<major-version>
+              BRANCH_NAME="Release_${MAJOR_VERSION}" # Branch name will be like Release_v1
+              git checkout -b "$BRANCH_NAME"
+              git push origin "$BRANCH_NAME"
+          else
+              echo "Not a major release. No branch created."
+          fi
