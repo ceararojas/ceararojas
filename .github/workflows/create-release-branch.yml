@@ -1,0 +1,25 @@
+name: Create Release Branch
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  create_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+
+      - name: Create Release Branch
+        run: |
+          TAG_NAME=${{ github.event.release.tag_name }}
+          # Format the branch name as Release_<tag>
+          BRANCH_NAME="Release_${TAG_NAME//\//-}" # Replace slashes with hyphens
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
