@@ -1,71 +1,53 @@
-## Structure:
-  # events
-  # # Jobs
-  # # # Runner machine
-  # # # # steps
-
-  # Goal for this task:
-    # Events: On push in main, manual trigger
-    # Get the branch name
-    # Get the git hash
-    # Append the tag name = git_hash + branch_name
-    # Build and push docker images to dockerhub
-
 name: Build Docker Image  # Workflow name
 
 # Trigger events
 on:   # specifies events that trigger the workflow
   push:  # Runs on push events
-    branches:
-      - main  # Only on 'main' branch
   workflow_dispatch:  # Manual trigger from GitHub UI
+  release:
+    types: [released]
 
 jobs:
   build:  # Job name
     runs-on: ubuntu-latest  # Runner machine, Ubuntu VM
 
     steps:
-
-       # # Step 1: Checkout code
+      # Step 1: Checkout code
       - name: Checkout code 
         uses: actions/checkout@v2  # Use the GitHub Actions 'checkout' action, version 2
 
-      # # Step 2: Setup Buildx
+      # Step 2: Setup Buildx
       - name: Set up Docker Buildx 
         uses: docker/setup-buildx-action@v2  # Docker Buildx action
 
-      # # Step 3: Get branch name
+      # Step 3: Get branch name
       - name: Get branch name 
         run: |                 # run in shell command
           BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')  # Extract branch name
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV  # Save branch name
 
-      # # Step 4: Get commit hash
-      - name: Get short Git commit hash 
-        id: vars    # Step ID for later reference
+      # Step 4: Set Docker tag
+      - name: Set Docker tag
+        id: docker_tag
         run: |
-          echo "COMMIT_HASH=$(git rev-parse --short HEAD)" >> $GITHUB_ENV  # Store commit hash in the environment
-          echo "::set-output name=commit_hash::$(git rev-parse --short HEAD)"  # Set output variable
-        # Explanation:
-        # echo "::set-output name=<output_name>::<value>"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG_NAME="${{ github.ref_name }}"  # Use the release tag name
+          else
+            TAG_NAME="${{ github.sha }}"  # Use git hash and branch name
+          fi
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT  # Save the tag for later use
 
-      # # Step 5: Displaying branch name and git hash
-      - name: Display branch and commit hash 
-        run: |
-          echo "Branch: $BRANCH_NAME"  # Show branch name
-          echo "Commit: ${{ steps.vars.outputs.commit_hash }}" 
-  
-      # # Step 6: Login to Docker Hub
+      # Step 5: Login to Docker Hub
       - name: Log in to Docker Hub 
         uses: docker/login-action@v2  # Docker login action
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}  # Docker Hub username
           password: ${{ secrets.DOCKERHUB_TOKEN }}  # Docker Hub token
 
-      # # Step 7: Build and push image
+      # Step 6: Build and push image
       - name: Build and push Docker image  
         run: |
-          TAG_NAME="${{ steps.vars.outputs.commit_hash }}-$BRANCH_NAME"  # Define tag name as git hash - branch name
+          TAG_NAME="${{ steps.docker_tag.outputs.tag }}"  # Use the output from the docker_tag step
           echo "Pushing image: $TAG_NAME"  # Log the tag name
           
           docker build -t ceararojas/sysrepo:$TAG_NAME .  # Build image with the new tag format
