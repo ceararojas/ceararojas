@@ -1,0 +1,45 @@
+name: "CD Office"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Select a version type (Tag or Git Hash)"
+        required: true
+        type: choice
+        options:
+          - Version Tag
+          - Git Hash
+      tag:
+        description: "Enter a tag or git hash (ignored if choosing a version tag)"
+        required: false
+      system:
+        description: "System"
+        type: choice
+        required: true
+        options:
+          - kalle
+
+jobs:
+  select-tag-or-hash:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Display Available Tags (if Version Tag selected)
+        if: ${{ github.event.inputs.version_type == 'Version Tag' }}
+        run: |
+          echo "Available tags:"
+          git tag -l
+          echo "::set-output name=tag_selection::$(git tag -l | fzf)"  # Use fzf for interactive selection
+
+      - name: Use Provided Git Hash
+        if: ${{ github.event.inputs.version_type == 'Git Hash' }}
+        run: |
+          echo "You chose to input a Git Hash."
+          echo "::set-output name=tag_selection::${{ github.event.inputs.tag }}"
+
+      - name: Confirm Selection
+        run: |
+          echo "Tag or Git Hash selected: ${{ steps.select-tag-or-hash.outputs.tag_selection }}"
